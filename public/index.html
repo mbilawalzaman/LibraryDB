@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Library Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background: #f9f9f9;
+            color: #333;
+        }
+
+        h1 {
+            color: #2c3e50;
+        }
+
+        section {
+            margin-bottom: 40px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            background: #fff;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        th,
+        td {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #3498db;
+            color: white;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        #testDbBtn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        #testDbBtn:hover {
+            background-color: #2980b9;
+        }
+
+        /* Modal Styling */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 999;
+            padding-top: 80px;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 50%;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #000;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header-container">
+        <h1>Library Dashboard</h1>
+        <button id="testDbBtn">Test DB Connection</button>
+        <button id="openModalBtn"
+            style="background-color: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Add
+            Entry</button>
+
+    </div>
+
+    <!-- Modal -->
+    <div id="entryModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Add New Entry</h2>
+
+            <div class="form-group">
+                <label for="role">Role</label>
+                <select id="role" onchange="toggleRoleFields()">
+                    <option value="">Select Role</option>
+                    <option value="user">User</option>
+                    <option value="author">Author</option>
+                </select>
+            </div>
+
+            <!-- User Fields -->
+            <div id="userFields" style="display: none;">
+                <div class="form-group">
+                    <label for="username">User Name</label>
+                    <input type="text" id="username" />
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" />
+                </div>
+            </div>
+
+            <!-- Author Fields -->
+            <div id="authorFields" style="display: none;">
+                <div class="form-group">
+                    <label for="authorName">Name</label>
+                    <input type="text" id="authorName" />
+                </div>
+                <div class="form-group">
+                    <label for="bio">Bio</label>
+                    <input type="text" id="bio" />
+                </div>
+                <div class="form-group">
+                    <label for="bookTitle">Book Title</label>
+                    <input type="text" id="bookTitle" />
+                </div>
+                <div class="form-group">
+                    <label for="genre">Genre</label>
+                    <input type="text" id="genre" />
+                </div>
+            </div>
+
+            <button
+                style="background-color: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 5px;"
+                onclick="submitEntry()">Submit</button>
+        </div>
+    </div>
+
+
+    <section id="authors">
+        <h2>Authors</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Bio</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </section>
+
+    <section id="books">
+        <h2>Books</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Genre</th>
+                    <th>Author Id</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </section>
+
+    <section id="users">
+        <h2>Users</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </section>
+
+    <script>
+        async function fetchData() {
+            try {
+                const [authorsRes, booksRes, usersRes] = await Promise.all([
+                    fetch('/authors'),
+                    fetch('/books'),
+                    fetch('/users')
+                ]);
+
+                const authors = await authorsRes.json();
+                const books = await booksRes.json();
+                const users = await usersRes.json();
+
+                // Render Authors
+                const authorsTbody = document.querySelector('#authors tbody');
+                authorsTbody.innerHTML = '';
+                authors.forEach(author => {
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                <td>${author.author_id}</td>
+                <td>${author.name}</td>
+                <td>${author.bio}</td>
+            `;
+                    authorsTbody.appendChild(tr);
+                });
+
+                // Render Books (use author_name directly)
+                const booksTbody = document.querySelector('#books tbody');
+                booksTbody.innerHTML = '';
+                books.forEach(book => {
+                    console.log(book); // For debugging, can be removed later
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                <td>${book.book_id}</td>
+                <td>${book.title}</td>
+                <td>${book.genre}</td>
+                <td>${book.author_name || 'Unknown Author'}</td>
+            `;
+                    booksTbody.appendChild(tr);
+                });
+
+                // Render Users
+                const usersTbody = document.querySelector('#users tbody');
+                usersTbody.innerHTML = '';
+                users.forEach(user => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                <td>${user.user_id}</td>
+                <td>${user.username}</td>
+                <td>${user.email}</td>
+            `;
+                    usersTbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error('Error loading data:', err);
+            }
+        }
+        fetchData();
+    </script>
+
+    <script>
+        document.getElementById('testDbBtn').addEventListener('click', async () => {
+            try {
+                const res = await fetch('/test-db');
+                const data = await res.json();
+                alert(data.message);
+            } catch (err) {
+                alert('Failed to connect to DB');
+                console.error(err);
+            }
+        });
+    </script>
+
+    <script>
+        const modal = document.getElementById('entryModal');
+        const openModalBtn = document.getElementById('openModalBtn');
+        const closeModal = document.querySelector('.close');
+
+        openModalBtn.onclick = () => {
+            modal.style.display = 'block';
+        };
+
+        closeModal.onclick = () => {
+            modal.style.display = 'none';
+        };
+
+        window.onclick = (event) => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        };
+
+        function toggleRoleFields() {
+            const role = document.getElementById('role').value;
+            document.getElementById('userFields').style.display = (role === 'user') ? 'block' : 'none';
+            document.getElementById('authorFields').style.display = (role === 'author') ? 'block' : 'none';
+        }
+
+        async function submitEntry() {
+            const role = document.getElementById('role').value;
+
+            if (role === 'user') {
+                const username = document.getElementById('username').value;
+                const email = document.getElementById('email').value;
+
+                try {
+                    const res = await fetch('/users/add-user', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, email })
+                    });
+
+                    const data = await res.json();
+
+                    if (res.ok) {
+                        alert(data.message);
+                    } else {
+                        alert('Failed to add user: ' + (data.message || 'Unknown error'));
+                    }
+
+                } catch (err) {
+                    console.error('Error:', err);
+                    alert('Error submitting data');
+                }
+            }
+
+
+            else if (role === 'author') {
+                const name = document.getElementById('authorName').value;
+                const bio = document.getElementById('bio').value;
+                const title = document.getElementById('bookTitle').value;
+                const genre = document.getElementById('genre').value;
+
+                try {
+                    const res = await fetch('/books/add-book', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, bio, title, genre })
+                    });
+
+                    const data = await res.json();
+
+                    if (res.ok) {
+                        alert(data.message);
+                    } else {
+                        alert('Failed to add book: ' + (data.message || 'Unknown error'));
+                    }
+
+                } catch (err) {
+                    console.error('Error:', err);
+                    alert('Error submitting data');
+                }
+            }
+
+            else {
+                alert('Please select a role');
+            }
+
+            modal.style.display = 'none';
+        }
+    </script>
+
+
+</body>
+
+</html>
