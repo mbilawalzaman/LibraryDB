@@ -120,6 +120,54 @@
             border: 1px solid #ccc;
             border-radius: 5px;
         }
+
+        #editBtn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        #editBtn:hover {
+            background-color: #2980b9;
+        }
+
+        #editBtn:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.5);
+        }
+
+        #editBtn:active {
+            transform: scale(0.98);
+        }
+
+        #deleteBtn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        #deleteBtn:hover {
+            background-color: #c0392b;
+        }
+
+        #deleteBtn:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.5);
+        }
+
+        #deleteBtn:active {
+            transform: scale(0.98);
+        }
     </style>
 </head>
 
@@ -133,6 +181,34 @@
             Entry</button>
 
     </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeEditModal()">&times;</span>
+            <h2>Edit Entry</h2>
+            <div class="form-group">
+                <label for="editName">Name</label>
+                <input type="text" id="editName" />
+            </div>
+            <div class="form-group">
+                <label for="editBio">Bio</label>
+                <input type="text" id="editBio" />
+            </div>
+            <button onclick="submitEdit()">Save</button>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeDeleteModal()">&times;</span>
+            <h2>Are you sure you want to delete this entry?</h2>
+            <button onclick="confirmDelete()">Yes, Delete</button>
+            <button onclick="closeDeleteModal()">Cancel</button>
+        </div>
+    </div>
+
 
     <!-- Modal -->
     <div id="entryModal" class="modal">
@@ -196,6 +272,7 @@
                     <th>ID</th>
                     <th>Name</th>
                     <th>Bio</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -211,6 +288,7 @@
                     <th>Title</th>
                     <th>Genre</th>
                     <th>Author Name</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -225,6 +303,7 @@
                     <th>ID</th>
                     <th>Username</th>
                     <th>Email</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -235,9 +314,9 @@
         async function fetchData() {
             try {
                 const [authorsRes, booksRes, usersRes] = await Promise.all([
-                    fetch('/authors'),
+                    fetch('/authors/getAllauthors'),
                     fetch('/books'),
-                    fetch('/users')
+                    fetch('/users/getAllUsers')
                 ]);
 
                 const authors = await authorsRes.json();
@@ -254,6 +333,10 @@
                 <td>${author.author_id}</td>
                 <td>${author.name}</td>
                 <td>${author.bio}</td>
+                 <td>
+                    <button onclick="openEditModal('author', ${author.author_id})" id="editBtn">Edit</button>
+                    <button onclick="openDeleteModal('author', ${author.author_id})" id="deleteBtn">Delete</button>
+                </td>
             `;
                     authorsTbody.appendChild(tr);
                 });
@@ -305,13 +388,17 @@
         });
     </script>
 
-    <script>
+    <!-- <script>
         const modal = document.getElementById('entryModal');
         const openModalBtn = document.getElementById('openModalBtn');
         const closeModal = document.querySelector('.close');
 
         openModalBtn.onclick = () => {
             modal.style.display = 'block';
+            // Reset form fields and role selection when opening modal
+            document.getElementById('role').value = "";
+            toggleRoleFields();
+            clearForm();
         };
 
         closeModal.onclick = () => {
@@ -322,12 +409,25 @@
             if (event.target === modal) {
                 modal.style.display = 'none';
             }
+            if (event.target === document.getElementById('editModal')) {
+                closeEditModal();
+            }
         };
 
         function toggleRoleFields() {
             const role = document.getElementById('role').value;
             document.getElementById('userFields').style.display = (role === 'user') ? 'block' : 'none';
             document.getElementById('authorFields').style.display = (role === 'author') ? 'block' : 'none';
+        }
+
+        function clearForm() {
+            // Clear all inputs
+            document.getElementById('username').value = "";
+            document.getElementById('email').value = "";
+            document.getElementById('authorName').value = "";
+            document.getElementById('bio').value = "";
+            document.getElementById('bookTitle').value = "";
+            document.getElementById('genre').value = "";
         }
 
         async function submitEntry() {
@@ -356,41 +456,395 @@
                     console.error('Error:', err);
                     alert('Error submitting data');
                 }
-            }
-
-
-            else if (role === 'author') {
-                const name = document.getElementById('authorName').value;
+            } else if (role === 'author') {
+                const name = document.getElementById('authorName').value.trim();
                 const bio = document.getElementById('bio').value;
-                const title = document.getElementById('bookTitle').value;
+                const title = document.getElementById('bookTitle').value.trim();
                 const genre = document.getElementById('genre').value;
 
+                if (!name) {
+                    alert('Author name is required');
+                    return;
+                }
+
                 try {
-                    const res = await fetch('/books/add-book', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name, bio, title, genre })
-                    });
+                    // Check if author exists first
+                    const checkRes = await fetch('/authors/getAllauthors');
+                    console.log("/getAllauthors", checkRes)
+                    const checkData = await checkRes.json();
+                    console.log(checkData, "json response")
+                    const authorExists = checkData.some(author => author.name === name);
 
-                    const data = await res.json();
-
-                    if (res.ok) {
-                        alert(data.message);
-                    } else {
-                        alert('Failed to add book: ' + (data.message || 'Unknown error'));
+                    if (authorExists) {
+                        alert('Author already exists');
+                        return; // stop submission
                     }
 
+                    if (!title) {
+                        // Add author only (no book)
+                        const res = await fetch('/authors/add-author', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name, bio })
+                        });
+
+                        const data = await res.json();
+
+                        if (res.ok) {
+                            alert(data.message);
+                        } else {
+                            alert('Failed to add author: ' + (data.message || 'Unknown error'));
+                        }
+                    } else {
+                        // Add author and book
+                        const res = await fetch('/books/add-book', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name, bio, title, genre })
+                        });
+
+                        const data = await res.json();
+
+                        if (res.ok) {
+                            alert(data.message);
+                        } else {
+                            alert('Failed to add book: ' + (data.message || 'Unknown error'));
+                        }
+                    }
                 } catch (err) {
                     console.error('Error:', err);
                     alert('Error submitting data');
                 }
-            }
-
-            else {
+            } else {
                 alert('Please select a role');
             }
 
             modal.style.display = 'none';
+        }
+
+        let selectedId = null;
+        let selectedRole = '';
+
+        function openEditModal(role, id) {
+            selectedId = id;
+            selectedRole = role;
+
+            if (role === 'author') {
+                fetch(`/authors/${id}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        document.getElementById('editName').value = data.name;
+                        document.getElementById('editBio').value = data.bio;
+                        document.getElementById('editModal').style.display = 'block';
+                    });
+            }
+            // Add similar fetch logic for users or books if needed
+        }
+
+        async function submitEdit() {
+            const name = document.getElementById('editName').value;
+            const bio = document.getElementById('editBio').value;
+
+            if (selectedRole === 'author') {
+                try {
+                    const res = await fetch(`/authors/updateAuthor/${selectedId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, bio })
+                    });
+
+                    const data = await res.json();
+                    if (res.ok) {
+                        alert(data.message);
+                        fetchData(); // reload data
+                        closeEditModal();
+                    } else {
+                        alert(data.message);
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+        }
+
+        function openDeleteModal(role, id) {
+            selectedId = id;
+            selectedRole = role;
+            document.getElementById('deleteModal').style.display = 'block';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+            selectedId = null;
+        }
+
+        async function confirmDelete() {
+            let endpoint = '';
+            if (selectedRole === 'author') {
+                endpoint = `/authors/deleteAuthor/${selectedId}`;
+            } else if (selectedRole === 'user') {
+                endpoint = `/users/deleteUser/${selectedId}`;
+            } else if (selectedRole === 'book') {
+                endpoint = `/books/deleteBook/${selectedId}`;
+            }
+
+            try {
+                const res = await fetch(endpoint, { method: 'DELETE' });
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert(data.message);
+                    fetchData(); // refresh data
+                } else {
+                    alert(data.message);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Failed to delete');
+            }
+
+            closeDeleteModal();
+        }
+
+    </script> -->
+    <script>
+        async function fetchData() {
+            try {
+                const [authorsRes, booksRes, usersRes] = await Promise.all([
+                    fetch('/authors/getAllauthors'),
+                    fetch('/books'),
+                    fetch('/users/getAllUsers')
+                ]);
+
+                const authors = await authorsRes.json();
+                const books = await booksRes.json();
+                const users = await usersRes.json();
+
+                // Render Authors
+                const authorsTbody = document.querySelector('#authors tbody');
+                authorsTbody.innerHTML = '';
+                authors.forEach(author => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                    <td>${author.author_id}</td>
+                    <td>${author.name}</td>
+                    <td>${author.bio}</td>
+                    <td>
+                        <button onclick="openEditModal('author', ${author.author_id}, '${author.name}', '${author.bio}')" id="editBtn">Edit</button>
+                        <button onclick="openDeleteModal('author', ${author.author_id})" id="deleteBtn">Delete</button>
+                    </td>
+                `;
+                    authorsTbody.appendChild(tr);
+                });
+
+                // Render Books
+                const booksTbody = document.querySelector('#books tbody');
+                booksTbody.innerHTML = '';
+                books.forEach(book => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                    <td>${book.book_id}</td>
+                    <td>${book.title}</td>
+                    <td>${book.genre}</td>
+                    <td>${book.author_name || 'Unknown Author'}</td>
+                `;
+                    booksTbody.appendChild(tr);
+                });
+
+                // Render Users
+                const usersTbody = document.querySelector('#users tbody');
+                usersTbody.innerHTML = '';
+                users.forEach(user => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                    <td>${user.user_id}</td>
+                    <td>${user.username}</td>
+                    <td>${user.email}</td>
+                    <td>
+                        <button onclick="openEditModal('user', ${user.user_id}, '${user.username}', '${user.email}')" id="editBtn">Edit</button>
+                        <button onclick="openDeleteModal('user', ${user.user_id})" id="deleteBtn">Delete</button>
+                    </td>
+                `;
+                    usersTbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error('Error loading data:', err);
+            }
+        }
+
+        fetchData();
+
+        document.getElementById('testDbBtn').addEventListener('click', async () => {
+            try {
+                const res = await fetch('/test-db');
+                const data = await res.json();
+                alert(data.message);
+            } catch (err) {
+                alert('Failed to connect to DB');
+                console.error(err);
+            }
+        });
+
+        const modal = document.getElementById('entryModal');
+        const openModalBtn = document.getElementById('openModalBtn');
+        const closeModal = document.querySelector('#entryModal .close');
+
+        openModalBtn.onclick = () => {
+            modal.style.display = 'block';
+            document.getElementById('role').value = "";
+            toggleRoleFields();
+            clearForm();
+        };
+
+        closeModal.onclick = () => {
+            modal.style.display = 'none';
+        };
+
+        window.onclick = (event) => {
+            if (event.target === modal) modal.style.display = 'none';
+            if (event.target === document.getElementById('editModal')) closeEditModal();
+            if (event.target === document.getElementById('deleteModal')) closeDeleteModal();
+        };
+
+        function toggleRoleFields() {
+            const role = document.getElementById('role').value;
+            document.getElementById('userFields').style.display = (role === 'user') ? 'block' : 'none';
+            document.getElementById('authorFields').style.display = (role === 'author') ? 'block' : 'none';
+        }
+
+        function clearForm() {
+            document.getElementById('username').value = "";
+            document.getElementById('email').value = "";
+            document.getElementById('authorName').value = "";
+            document.getElementById('bio').value = "";
+            document.getElementById('bookTitle').value = "";
+            document.getElementById('genre').value = "";
+        }
+
+        async function submitEntry() {
+            const role = document.getElementById('role').value;
+
+            if (role === 'user') {
+                const username = document.getElementById('username').value;
+                const email = document.getElementById('email').value;
+                try {
+                    const res = await fetch('/users/add-user', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, email })
+                    });
+                    const data = await res.json();
+                    alert(data.message || 'User added');
+                    fetchData();
+                    modal.style.display = 'none';
+                } catch (err) {
+                    alert('Error adding user');
+                }
+            } else if (role === 'author') {
+                const name = document.getElementById('authorName').value;
+                const bio = document.getElementById('bio').value;
+                const title = document.getElementById('bookTitle').value;
+                const genre = document.getElementById('genre').value;
+                try {
+                    const res = await fetch('/authors/add-author-book', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, bio, title, genre })
+                    });
+                    const data = await res.json();
+                    alert(data.message || 'Author and Book added');
+                    fetchData();
+                    modal.style.display = 'none';
+                } catch (err) {
+                    alert('Error adding author');
+                }
+            }
+        }
+
+        let currentEdit = { type: null, id: null };
+
+        function openEditModal(type, id, val1, val2) {
+            currentEdit = { type, id };
+            document.getElementById('editModal').style.display = 'block';
+            document.getElementById('editName').value = val1;
+            document.getElementById('editBio').value = val2;
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        async function submitEdit() {
+            const name = document.getElementById('editName').value;
+            const bio = document.getElementById('editBio').value;
+            const { type, id } = currentEdit;
+
+            try {
+                let endpoint = '', payload = {};
+                if (type === 'author') {
+                    endpoint = `/authors/updateAuthor/${id}`;
+                    payload = { name, bio };
+                } else if (type === 'user') {
+                    endpoint = `/users/update-user/${id}`;
+                    payload = { username: name, email: bio };
+                }
+
+                const res = await fetch(endpoint, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                alert(data.message || 'Updated');
+                closeEditModal();
+                fetchData();
+            } catch (err) {
+                alert('Error updating');
+                console.error(err);
+            }
+        }
+
+        let currentDelete = { type: null, id: null };
+
+        function openDeleteModal(type, id) {
+            currentDelete = { type, id };
+            document.getElementById('deleteModal').style.display = 'block';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+        }
+
+        async function confirmDelete() {
+            const { type, id } = currentDelete;
+
+            try {
+                let endpoint = '';
+                if (type === 'author') {
+                    endpoint = `/authors/deleteAuthor/${id}`;
+                    console.log(endpoint, "endpoint")
+                } else if (type === 'user') {
+                    endpoint = `/users/delete-user/${id}`;
+                }
+
+                const res = await fetch(endpoint, { method: 'DELETE' });
+                const data = await res.json();
+                alert(data.message || 'Deleted');
+                closeDeleteModal();
+                fetchData();
+            } catch (err) {
+                alert('Error deleting');
+                console.error(err);
+            }
+        }
+    </script>
+
+    <script>
+
+        function handleCloseEditModal() {
+            alert('Close edit modal');
+            closeEditModal();
         }
     </script>
 

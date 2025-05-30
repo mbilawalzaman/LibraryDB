@@ -18,3 +18,8 @@ export const insertBook = (title, genre, author_id, callback) => {
         callback
     );
 };
+
+export const updateAuthorBio = (author_id, bio, callback) => {
+    const query = 'UPDATE authors SET bio = ? WHERE author_id = ?';
+    db.query(query, [bio, author_id], callback);
+};

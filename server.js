@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import bookRoutes from './routes/bookRoutes.js';
 import viewRoutes from './routes/viewRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import authorRoutes from './routes/authorRoutes.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -25,6 +26,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/books', bookRoutes);
 app.use('/', viewRoutes);
 app.use('/users', userRoutes);
+app.use('/authors', authorRoutes);
 
 
 
