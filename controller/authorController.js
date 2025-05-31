@@ -69,13 +69,23 @@ export const deleteAuthor = async (req, res) => {
     const authorId = req.params.id;
     try {
         await deleteAuthorById(authorId, (err, result) => {
+
             if (err) {
                 console.error('Error deleting author:', err);
+
+                if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+                    return res.status(400).json({
+                        message: 'Cannot delete the author because they have associated books. Please delete those books first.'
+                    });
+                }
+
                 return res.status(500).json({ message: 'Database error deleting author' });
             }
+
             if (result.affectedRows === 0) {
                 return res.status(404).json({ message: 'Author not found' });
             }
+
             res.json({ message: 'Author deleted successfully' });
         });
     } catch (err) {
