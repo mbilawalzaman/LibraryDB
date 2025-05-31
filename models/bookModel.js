@@ -23,3 +23,15 @@ export const updateAuthorBio = (author_id, bio, callback) => {
     const query = 'UPDATE authors SET bio = ? WHERE author_id = ?';
     db.query(query, [bio, author_id], callback);
 };
+
+
+export const updateBook = (book_id, title, genre, callback) => {
+    const query = 'UPDATE books SET title = ?, genre = ? WHERE book_id = ?';
+    db.query(query, [title, genre, book_id], callback);
+};
+
+
+export const deleteBook = (book_id, callback) => {
+    const query = 'DELETE FROM books WHERE book_id = ?';
+    db.query(query, [book_id], callback);
+};

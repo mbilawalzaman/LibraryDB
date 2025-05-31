@@ -1,47 +1,98 @@
-import { getAuthorByName, insertAuthor, insertBook, updateAuthorBio } from '../models/bookModel.js';
+import { getAuthorByName, insertAuthor, insertBook, updateAuthorBio, updateBook, deleteBook } from '../models/bookModel.js';
+
 
 export const addBook = (req, res) => {
     const { name, bio, title, genre } = req.body;
 
-    // 1. Check if author exists
+    if (!name || !title) {
+        return res.status(400).json({ message: 'Author name and book title are required' });
+    }
+
     getAuthorByName(name, (err, authors) => {
         if (err) {
             console.error('Error fetching author:', err);
-            return res.status(500).send('Database error');
+            return res.status(500).json({ message: 'Database error while checking author' });
         }
-        const author_id = authors[0].author_id;
-        const author_name = authors[0].name;
-        if (bio && bio !== authors[0].bio) {
-            updateAuthorBio(author_id, bio, (err) => {
-                if (err) {
-                    console.error('Error updating author bio:', err);
-                    return res.status(500).json({ message: 'Database error while updating author bio' });
-                }
-            });
 
-            // Add the book
+        if (authors.length > 0) {
+            // ✅ Author exists
+            const author_id = authors[0].author_id;
+            const existingBio = authors[0].bio;
+
+            // 🔄 Optional: update bio if it's different
+            if (bio && bio !== existingBio) {
+                updateAuthorBio(author_id, bio, (err) => {
+                    if (err) {
+                        console.error('Error updating bio:', err);
+                        return res.status(500).json({ message: 'Error updating author bio' });
+                    }
+                });
+            }
+
             insertBook(title, genre, author_id, (err) => {
                 if (err) {
-                    return res.status(500).json({ message: 'Database error while adding book' });
+                    return res.status(500).json({ message: 'Error inserting book' });
                 }
-                res.json({ message: `Book added successfully for author ${author_name} and book ${title}` });
+                return res.json({ message: `Book "${title}" added for existing author "${name}"` });
             });
+
         } else {
-            insertAuthor(name, bio, (err, authorResult) => {
+            // 🆕 Author does not exist → insert author then book
+            insertAuthor(name, bio || '', (err, result) => {
                 if (err) {
-                    return res.status(500).json({ message: 'Database error while adding author' });
+                    return res.status(500).json({ message: 'Error inserting new author' });
                 }
 
-                const author_id = authorResult.insertId;
-                console.log(authorResult);
+                const author_id = result.insertId;
 
                 insertBook(title, genre, author_id, (err) => {
                     if (err) {
-                        return res.status(500).json({ message: 'Database error while adding book' });
+                        return res.status(500).json({ message: 'Error inserting book' });
                     }
-                    res.json({ message: `New author ${name} and book ${title} added successfully` });
+                    return res.json({ message: `New author "${name}" and book "${title}" added` });
                 });
             });
         }
+    });
+};
+
+
+export const updateBookbyId = (req, res) => {
+    const { id } = req.params;
+    const { title, genre } = req.body;
+
+    if (!title || !genre) {
+        return res.status(400).json({ message: 'Title and genre are required' });
+    }
+
+    updateBook(id, title, genre, (err, result) => {
+        if (err) {
+            console.error('Error updating book:', err);
+            return res.status(500).json({ message: 'Database error while updating book' });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Book not found' });
+        }
+
+        res.json({ message: 'Book updated successfully' });
+    });
+};
+
+// ✅ Delete book
+export const deleteBookbyId = (req, res) => {
+    const { id } = req.params;
+
+    deleteBook(id, (err, result) => {
+        if (err) {
+            console.error('Error deleting book:', err);
+            return res.status(500).json({ message: 'Database error while deleting book' });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Book not found' });
+        }
+
+        res.json({ message: 'Book deleted successfully' });
     });
 };

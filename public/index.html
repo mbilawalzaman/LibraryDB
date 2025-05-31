@@ -121,7 +121,7 @@
             border-radius: 5px;
         }
 
-        #editBtn {
+        .editBtn {
             background-color: #3498db;
             color: white;
             border: none;
@@ -130,22 +130,24 @@
             cursor: pointer;
             font-weight: bold;
             transition: background-color 0.3s, transform 0.1s;
+            margin-right: 10px;
+            /* Add spacing between buttons */
         }
 
-        #editBtn:hover {
+        .editBtn:hover {
             background-color: #2980b9;
         }
 
-        #editBtn:focus {
+        .editBtn:focus {
             outline: none;
             box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.5);
         }
 
-        #editBtn:active {
+        .editBtn:active {
             transform: scale(0.98);
         }
 
-        #deleteBtn {
+        .deleteBtn {
             background-color: #e74c3c;
             color: white;
             border: none;
@@ -156,16 +158,16 @@
             transition: background-color 0.3s, transform 0.1s;
         }
 
-        #deleteBtn:hover {
+        .deleteBtn:hover {
             background-color: #c0392b;
         }
 
-        #deleteBtn:focus {
+        .deleteBtn:focus {
             outline: none;
             box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.5);
         }
 
-        #deleteBtn:active {
+        .deleteBtn:active {
             transform: scale(0.98);
         }
     </style>
@@ -334,8 +336,8 @@
                 <td>${author.name}</td>
                 <td>${author.bio}</td>
                  <td>
-                    <button onclick="openEditModal('author', ${author.author_id})" id="editBtn">Edit</button>
-                    <button onclick="openDeleteModal('author', ${author.author_id})" id="deleteBtn">Delete</button>
+                    <button onclick="openEditModal('author', ${author.author_id})" class="editBtn">Edit</button>
+                    <button onclick="openDeleteModal('author', ${author.author_id})" class="deleteBtn">Delete</button>
                 </td>
             `;
                     authorsTbody.appendChild(tr);
@@ -630,8 +632,8 @@
                     <td>${author.name}</td>
                     <td>${author.bio}</td>
                     <td>
-                        <button onclick="openEditModal('author', ${author.author_id}, '${author.name}', '${author.bio}')" id="editBtn">Edit</button>
-                        <button onclick="openDeleteModal('author', ${author.author_id})" id="deleteBtn">Delete</button>
+                        <button onclick="openEditModal('author', ${author.author_id}, '${author.name}', '${author.bio}')" class="editBtn">Edit</button>
+                        <button onclick="openDeleteModal('author', ${author.author_id})" class="deleteBtn">Delete</button>
                     </td>
                 `;
                     authorsTbody.appendChild(tr);
@@ -647,6 +649,10 @@
                     <td>${book.title}</td>
                     <td>${book.genre}</td>
                     <td>${book.author_name || 'Unknown Author'}</td>
+                    <td>
+                        <button onclick="openEditModal('book', ${book.book_id}, '${book.title}', '${book.genre}')" class="editBtn">Edit</button>
+                        <button onclick="openDeleteModal('book', ${book.book_id})" class="deleteBtn">Delete</button>
+                    </td>
                 `;
                     booksTbody.appendChild(tr);
                 });
@@ -661,8 +667,8 @@
                     <td>${user.username}</td>
                     <td>${user.email}</td>
                     <td>
-                        <button onclick="openEditModal('user', ${user.user_id}, '${user.username}', '${user.email}')" id="editBtn">Edit</button>
-                        <button onclick="openDeleteModal('user', ${user.user_id})" id="deleteBtn">Delete</button>
+                        <button onclick="openEditModal('user', ${user.user_id}, '${user.username}', '${user.email}')" class="editBtn">Edit</button>
+                        <button onclick="openDeleteModal('user', ${user.user_id})" class="deleteBtn">Delete</button>
                     </td>
                 `;
                     usersTbody.appendChild(tr);
@@ -757,13 +763,13 @@
                     const checkData = await checkRes.json();
                     const authorExists = checkData.some(author => author.name === name);
 
-                    if (authorExists) {
-                        alert('Author already exists');
-                        return; // stop submission
-                    }
-
                     if (!title) {
-                        // Add author only (no book)
+
+                        if (authorExists) {
+                            alert('Author already exists');
+                            return;
+                        }
+
                         const res = await fetch('/authors/add-author', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -778,7 +784,7 @@
                             alert('Failed to add author: ' + (data.message || 'Unknown error'));
                         }
                     } else {
-                        // Add author and book
+
                         const res = await fetch('/books/add-book', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -831,6 +837,9 @@
                 } else if (type === 'user') {
                     endpoint = `/users/updateUser/${id}`;
                     payload = { username: name, email: bio };
+                } else if (type === 'book') {
+                    endpoint = `/books/updateBook/${id}`;
+                    payload = { title: name, genre: bio };
                 }
 
                 const res = await fetch(endpoint, {
@@ -870,6 +879,8 @@
                     console.log(endpoint, "endpoint")
                 } else if (type === 'user') {
                     endpoint = `/users/deleteUser/${id}`;
+                } else if (type === 'book') {
+                    endpoint = `/books/deleteBook/${id}`;
                 }
 
                 const res = await fetch(endpoint, { method: 'DELETE' });
