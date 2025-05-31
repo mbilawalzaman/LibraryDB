@@ -10,6 +10,9 @@ export const addUser = (req, res) => {
     insertUser(username, email, (err, result) => {
         if (err) {
             console.error('Error inserting user:', err);
+            if (err.code === 'ER_DUP_ENTRY') {
+                return res.status(409).json({ message: 'This email is already registered.' });
+            }
             return res.status(500).json({ message: 'Database error while adding user' });
         }
         res.json({ message: 'User added successfully', userId: result.insertId });
