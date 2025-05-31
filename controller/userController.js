@@ -1,4 +1,4 @@
-import { insertUser, getUsers } from '../models/userModel.js';
+import { insertUser, getUsers, updateUserById, deleteUserById } from '../models/userModel.js';
 
 export const addUser = (req, res) => {
     const { username, email } = req.body;
@@ -23,5 +23,25 @@ export const listUsers = (req, res) => {
             return res.status(500).json({ message: 'Database error fetching users' });
         }
         res.json(users);
+    });
+};
+
+export const updateUser = (req, res) => {
+    const userId = req.params.id;
+    const userData = req.body;
+
+    updateUserById(userId, userData, (err, result) => {
+        if (err) return res.status(500).json({ message: 'Update failed', error: err });
+        res.status(200).json({ message: 'User updated successfully' });
+    });
+};
+
+// Delete user
+export const deleteUser = (req, res) => {
+    const userId = req.params.id;
+
+    deleteUserById(userId, (err, result) => {
+        if (err) return res.status(500).json({ message: 'Delete failed', error: err });
+        res.status(200).json({ message: 'User deleted successfully' });
     });
 };

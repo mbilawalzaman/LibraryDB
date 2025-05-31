@@ -741,24 +741,68 @@
                     alert('Error adding user');
                 }
             } else if (role === 'author') {
-                const name = document.getElementById('authorName').value;
+                const name = document.getElementById('authorName').value.trim();
                 const bio = document.getElementById('bio').value;
-                const title = document.getElementById('bookTitle').value;
+                const title = document.getElementById('bookTitle').value.trim();
                 const genre = document.getElementById('genre').value;
-                try {
-                    const res = await fetch('/authors/add-author-book', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name, bio, title, genre })
-                    });
-                    const data = await res.json();
-                    alert(data.message || 'Author and Book added');
-                    fetchData();
-                    modal.style.display = 'none';
-                } catch (err) {
-                    alert('Error adding author');
+
+                if (!name) {
+                    alert('Author name is required');
+                    return;
                 }
+
+                try {
+                    // Check if author exists first
+                    const checkRes = await fetch('/authors/getAllauthors');
+                    const checkData = await checkRes.json();
+                    const authorExists = checkData.some(author => author.name === name);
+
+                    if (authorExists) {
+                        alert('Author already exists');
+                        return; // stop submission
+                    }
+
+                    if (!title) {
+                        // Add author only (no book)
+                        const res = await fetch('/authors/add-author', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name, bio })
+                        });
+
+                        const data = await res.json();
+
+                        if (res.ok) {
+                            alert(data.message);
+                        } else {
+                            alert('Failed to add author: ' + (data.message || 'Unknown error'));
+                        }
+                    } else {
+                        // Add author and book
+                        const res = await fetch('/books/add-book', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name, bio, title, genre })
+                        });
+
+                        const data = await res.json();
+
+                        if (res.ok) {
+                            alert(data.message);
+                        } else {
+                            alert('Failed to add book: ' + (data.message || 'Unknown error'));
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error:', err);
+                    alert('Error submitting data');
+                }
+            } else {
+                alert('Please select a role');
             }
+
+            modal.style.display = 'none';
+
         }
 
         let currentEdit = { type: null, id: null };
@@ -785,7 +829,7 @@
                     endpoint = `/authors/updateAuthor/${id}`;
                     payload = { name, bio };
                 } else if (type === 'user') {
-                    endpoint = `/users/update-user/${id}`;
+                    endpoint = `/users/updateUser/${id}`;
                     payload = { username: name, email: bio };
                 }
 
@@ -825,7 +869,7 @@
                     endpoint = `/authors/deleteAuthor/${id}`;
                     console.log(endpoint, "endpoint")
                 } else if (type === 'user') {
-                    endpoint = `/users/delete-user/${id}`;
+                    endpoint = `/users/deleteUser/${id}`;
                 }
 
                 const res = await fetch(endpoint, { method: 'DELETE' });
